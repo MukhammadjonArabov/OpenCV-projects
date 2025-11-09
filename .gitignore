@@ -13,7 +13,7 @@ __pycache__/
 .idea/
 .vscode/
 *.code-workspace
-
+images
 # Rasm va fayllar
 *.jpg
 *.png
