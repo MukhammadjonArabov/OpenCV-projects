@@ -1,0 +1,30 @@
+# Virtual muhit
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Rasm va fayllar
+*.jpg
+*.png
+*.jpeg
+*.mp4
+
+# Model va katta fayllar
+*.dat
+*.caffemodel
+*.protobuf
+
+# Log va temp
+*.log
+*.tmp

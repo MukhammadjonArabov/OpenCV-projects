@@ -1,0 +1,9 @@
+opencv-python==4.10.0.84
+imutils==0.5.4
+numpy==1.26.4
+
+git+https://github.com/JustinShenk/fer.git
+
+# Qo'shimcha (agar kerak bo'lsa)
+# tensorflow-cpu==2.16.1
+# torch==2.3.0
