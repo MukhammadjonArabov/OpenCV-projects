@@ -3,10 +3,6 @@ import cv2
 image_path = "../images1.jpg"
 image = cv2.imread(image_path)
 
-if image is None:
-    print("XATO: 'image.jpg' topilmadi! Rasm qo'ying.")
-    exit()
-
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 gray = cv2.GaussianBlur(gray, (5, 5), 0)
 
@@ -16,7 +12,8 @@ contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
 result = image.copy()
 shakl_soni = 0
 
-for i, cnt in enumerate(contours):
+
+for cnt in contours:
     area = cv2.contourArea(cnt)
     if area < 500:
         continue
@@ -51,10 +48,7 @@ for i, cnt in enumerate(contours):
         cv2.circle(result, (cx, cy), 7, (255, 0, 0), -1)
         cv2.putText(result, shape, (cx - 50, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
-    print(f"{shakl_soni:2}. {shape:12} | Maydon: {int(area):6} px | Nuqtalar: {sides}")
 
-
-cv2.imwrite("result_shapes.jpg", result)
 
 cv2.imshow("Shakllar aniqlandi", result)
 cv2.waitKey(0)

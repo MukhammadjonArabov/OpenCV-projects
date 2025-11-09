@@ -73,10 +73,6 @@ def draw_palette(image, color_stats):
 image_path = "../image.png"
 image = cv2.imread(image_path)
 
-if image is None:
-    print(f"XATO: '{image_path}' topilmadi!")
-    exit()
-
 original = image.copy()
 
 image = cv2.resize(image, (300, 300))
@@ -93,12 +89,8 @@ for name, count in color_counts.most_common():
         bgr = COLORS.get(name, (128, 128, 128))
         color_stats.append((name, bgr, percent))
 
-print("\n" + "=" * 70)
-print("     RANG TAHLILI (22 ta rang)")
-print("=" * 70)
 for name, _, percent in color_stats:
-    bar = "█" * max(1, int(percent // 2))
-    print(f"{name:15} | {percent:5.1f}% | {bar}")
+    print(f"{name:15} | {percent:5.1f}% |")
 
 resized_original = cv2.resize(original, (300, 300))
 result_image = draw_palette(resized_original, color_stats)
