@@ -70,7 +70,7 @@ def draw_palette(image, color_stats):
     combined = np.vstack((image, palette))
     return combined
 
-image_path = "image.png"
+image_path = "../image.png"
 image = cv2.imread(image_path)
 
 if image is None:
