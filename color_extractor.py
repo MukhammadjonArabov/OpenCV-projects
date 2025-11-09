@@ -1,137 +1,108 @@
 import cv2
 import numpy as np
+from collections import Counter
 
-def get_color_name(bgr_color):
-    b, g, r = map(int, bgr_color)
-    if r > g and r > b:
-        if r > 200: return "Qizil"
-        elif r > 100: return "To'q sariq"
-        else: return "Qizil-jigarrang"
-    elif g > r and g > b:
-        if g > 200: return "Yashil"
-        elif g > 100: return "Yashil-sariq"
-        else: return "Qorong‘i yashil"
-    elif b > r and b > g:
-        if b > 200: return "Ko‘k"
-        elif b > 100: return "Moviy"
-        else: return "Qorong‘i ko‘k"
-    else:
-        return "Aralash / Oq"
+COLORS = {
+    "Qizil": (0, 0, 255),
+    "To‘q qizil": (0, 0, 139),
+    "Yashil": (0, 255, 0),
+    "Zumrad yashil": (0, 100, 0),
+    "Ko‘k": (255, 0, 0),
+    "Moviy": (139, 0, 0),
+    "Sariq": (0, 255, 255),
+    "Och sariq": (173, 255, 47),
+    "Binafsha": (128, 0, 128),
+    "Pushti": (203, 192, 255),
+    "Jigarrang": (42, 42, 165),
+    "Qora": (0, 0, 0),
+    "Oq": (255, 255, 255),
+    "Kulrang": (128, 128, 128),
+    "To‘q kulrang": (64, 64, 64),
+    "Och kulrang": (192, 192, 192),
+    "Och yashil": (144, 238, 144),
+    "Moviy-yashil": (175, 238, 238),
+    "Qizg‘ish sariq": (220, 20, 60),
+    "Nilufar": (255, 228, 196),
+    "Olov rang": (255, 69, 0),
+    "Zumrad": (80, 200, 120)
+}
 
-def get_shape_name(approx):
-    sides = len(approx)
-    if sides == 3:
-        return "Uchburchak"
-    elif sides == 4:
-        x, y, w, h = cv2.boundingRect(approx)
-        aspect_ratio = w / float(h)
-        if 0.95 <= aspect_ratio <= 1.05:
-            return "Kvadrat"
-        else:
-            return "To‘rtburchak"
-    elif sides == 5:
-        return "Beshburchak"
-    elif sides == 6:
-        return "Olti burchak"
-    elif sides > 6:
-        return "Doira"
-    else:
-        return "Noma'lum"
+def color_distance(c1, c2):
+    return np.sqrt(sum((a - b) ** 2 for a, b in zip(c1, c2)))
 
-def find_dominant_colors(image, k=5):
-    data = image.reshape((-1, 3))
-    data = np.float32(data)
+def find_nearest_color(bgr_pixel):
+    min_dist = float('inf')
+    nearest_name = "Noma'lum"
+    for name, color in COLORS.items():
+        dist = color_distance(bgr_pixel, color)
+        if dist < min_dist:
+            min_dist = dist
+            nearest_name = name
+    return nearest_name
 
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    _, labels, centers = cv2.kmeans(data, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+def draw_palette(image, color_stats):
+    h, w = 60, 60
+    num_colors = len(color_stats)
+    target_width = image.shape[1]
+    palette_width = w * num_colors
 
-    centers = np.uint8(centers)
-    counts = np.bincount(labels.flatten())
+    if palette_width > target_width:
+        w = target_width // num_colors
+        if w < 30:
+            w = 30
+            num_cols = target_width // w
+            color_stats = color_stats[:num_cols]
+            num_colors = len(color_stats)
 
-    return centers, counts
+    palette = np.zeros((h * 2, w * num_colors, 3), dtype=np.uint8)
+    x_offset = 0
+    for name, bgr, percent in color_stats:
+        color_bgr = np.array(bgr, dtype=np.uint8)
+        cv2.rectangle(palette, (x_offset, 0), (x_offset + w, h), color_bgr.tolist(), -1)
+        cv2.putText(palette, name[:6], (x_offset + 2, 22),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
+        cv2.putText(palette, f"{percent:.0f}%", (x_offset + 2, 45),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
+        x_offset += w
+
+    palette = cv2.resize(palette, (target_width, h * 2))
+
+    combined = np.vstack((image, palette))
+    return combined
 
 image_path = "image.png"
 image = cv2.imread(image_path)
 
 if image is None:
-    print("XATO: Rasm topilmadi! Yo‘lni tekshiring:", image_path)
+    print(f"XATO: '{image_path}' topilmadi!")
     exit()
 
 original = image.copy()
 
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-edged = cv2.Canny(blurred, 50, 150)
+image = cv2.resize(image, (300, 300))
+pixels = image.reshape((-1, 3))
 
-contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+color_names = [find_nearest_color(pixel) for pixel in pixels]
+color_counts = Counter(color_names)
+total_pixels = len(pixels)
 
-print("\n" + "="*50)
-print("     SHAKLLAR VA RANGLAR TAHLILI")
-print("="*50)
+color_stats = []
+for name, count in color_counts.most_common():
+    percent = (count / total_pixels) * 100
+    if percent >= 0.1:
+        bgr = COLORS.get(name, (128, 128, 128))
+        color_stats.append((name, bgr, percent))
 
-shakllar_soni = 0
-for i, cnt in enumerate(contours):
-    area = cv2.contourArea(cnt)
-    if area < 500:
-        continue
+print("\n" + "=" * 70)
+print("     RANG TAHLILI (22 ta rang)")
+print("=" * 70)
+for name, _, percent in color_stats:
+    bar = "█" * max(1, int(percent // 2))
+    print(f"{name:15} | {percent:5.1f}% | {bar}")
 
-    shakllar_soni += 1
+resized_original = cv2.resize(original, (300, 300))
+result_image = draw_palette(resized_original, color_stats)
 
-    peri = cv2.arcLength(cnt, True)
-    approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
-
-    shape_name = get_shape_name(approx)
-
-    M = cv2.moments(cnt)
-    if M["m00"] != 0:
-        cX = int(M["m10"] / M["m00"])
-        cY = int(M["m01"] / M["m00"])
-    else:
-        cX, cY = 0, 0
-
-    mask = np.zeros(gray.shape, dtype=np.uint8)
-    cv2.drawContours(mask, [cnt], -1, 255, -1)
-    mean_color_tuple = cv2.mean(image, mask=mask)[:3]  # (B, G, R)
-    mean_color_np = np.array(mean_color_tuple)
-    mean_color_int = mean_color_np.astype(int)
-
-    color_name = get_color_name(mean_color_int)
-
-    cv2.drawContours(image, [cnt], -1, (0, 255, 0), 3)
-    cv2.putText(image, f"{shape_name}: {color_name}", (cX - 70, cY),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-    print(f"Shakl {shakllar_soni}:")
-    print(f"   ↳ Shakl: {shape_name}")
-    print(f"   ↳ Rang: {color_name}")
-    print(f"   ↳ BGR: {mean_color_int}")
-    print(f"   ↳ Maydon: {area:.0f} px")
-    print("-" * 40)
-
-if shakllar_soni == 0:
-    print("Hech qanday shakl topilmadi. Rasmni tekshiring yoki sifatni oshiring.")
-
-print("\nDOMINANT RANGLAR (TOP 5)")
-print("-" * 40)
-
-colors, counts = find_dominant_colors(original, k=5)
-total_pixels = np.sum(counts)
-
-for i in range(len(colors)):
-    percentage = (counts[i] / total_pixels) * 100
-    color_bgr = colors[i]
-    color_name = get_color_name(color_bgr)
-    print(f"Rang {i+1}:")
-    print(f"   ↳ Nomi: {color_name}")
-    print(f"   ↳ BGR: {color_bgr}")
-    print(f"   ↳ Foiz: {percentage:.1f}%")
-    print("-" * 30)
-
-cv2.imshow("Natija: Shakllar va Ranglar", image)
-cv2.imshow("Konturlar (Canny)", edged)
-
-print("\nEkranni yopish uchun 'q' tugmasini bosing...")
+cv2.imshow("Rang tahlili + Palitra", result_image)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
-print("\nDastur muvaffaqiyatli yakunlandi!")
