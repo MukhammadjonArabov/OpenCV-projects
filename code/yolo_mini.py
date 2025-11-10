@@ -14,10 +14,14 @@ while True:
 
     for r in results:
         for box in r.boxes:
+
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             cls = int(box.cls[0])
             conf = float(box.conf[0])
             label = model.names[cls]
+
+            if label != "person":
+                continue
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(frame, f"{label} {conf:.2f}",
